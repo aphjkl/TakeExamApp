@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import edu.ap.takeexamapp.navigation.TakeExamNavigation
 import edu.ap.takeexamapp.ui.theme.TakeExamAppTheme
 
 
@@ -20,12 +21,16 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             TakeExamAppTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
+//                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+//                    Greeting(
+//                        name = "Android",
+//                        modifier = Modifier.padding(innerPadding)
+//                    )
+//                }
+
+                TakeExamNavigation()
+
+
             }
         }
     }
