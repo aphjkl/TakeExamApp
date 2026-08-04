@@ -11,6 +11,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import edu.ap.takeexamapp.ui.screens.home.HomeScreen
 
+import com.google.firebase.auth.FirebaseAuth
+import edu.ap.takeexamapp.ui.screens.admin.AdminDashboardScreen
+import edu.ap.takeexamapp.ui.screens.admin.AdminLoginScreen
+
 @Composable
 fun TakeExamNavigation() {
     val navController = rememberNavController()
@@ -35,8 +39,33 @@ fun TakeExamNavigation() {
         }
 
         composable(AppRoute.ADMIN_LOGIN) {
-            PlaceholderScreen(text = "Admin login")
+    AdminLoginScreen(
+        onLoginSuccess = {
+            navController.navigate(AppRoute.ADMIN_DASHBOARD) {
+                popUpTo(AppRoute.ADMIN_LOGIN) {
+                    inclusive = true
+                }
+            }
         }
+    )
+}
+
+composable(AppRoute.ADMIN_DASHBOARD) {
+    AdminDashboardScreen(
+        onSignOut = {
+            FirebaseAuth.getInstance().signOut()
+
+            navController.navigate(AppRoute.HOME) {
+                popUpTo(AppRoute.HOME) {
+                    inclusive = true
+                }
+            }
+        }
+    )
+}
+
+
+
     }
 }
 
