@@ -14,6 +14,7 @@ import edu.ap.takeexamapp.ui.screens.home.HomeScreen
 import com.google.firebase.auth.FirebaseAuth
 import edu.ap.takeexamapp.ui.screens.admin.AdminDashboardScreen
 import edu.ap.takeexamapp.ui.screens.admin.AdminLoginScreen
+import edu.ap.takeexamapp.ui.screens.admin.ManageUsersScreen
 
 @Composable
 fun TakeExamNavigation() {
@@ -39,31 +40,40 @@ fun TakeExamNavigation() {
         }
 
         composable(AppRoute.ADMIN_LOGIN) {
-    AdminLoginScreen(
-        onLoginSuccess = {
-            navController.navigate(AppRoute.ADMIN_DASHBOARD) {
-                popUpTo(AppRoute.ADMIN_LOGIN) {
-                    inclusive = true
+            AdminLoginScreen(
+                onLoginSuccess = {
+                    navController.navigate(AppRoute.ADMIN_DASHBOARD) {
+                        popUpTo(AppRoute.ADMIN_LOGIN) {
+                            inclusive = true
+                        }
+                    }
                 }
-            }
+            )
         }
-    )
-}
-
-composable(AppRoute.ADMIN_DASHBOARD) {
-    AdminDashboardScreen(
-        onSignOut = {
-            FirebaseAuth.getInstance().signOut()
-
-            navController.navigate(AppRoute.HOME) {
-                popUpTo(AppRoute.HOME) {
-                    inclusive = true
+        composable(AppRoute.MANAGE_USERS) {
+            ManageUsersScreen(
+                onBack = {
+                    navController.popBackStack()
                 }
-            }
+            )
         }
-    )
-}
 
+        composable(AppRoute.ADMIN_DASHBOARD) {
+            AdminDashboardScreen(
+                onManageUsers = {
+                    navController.navigate(AppRoute.MANAGE_USERS)
+                },
+                onSignOut = {
+                    FirebaseAuth.getInstance().signOut()
+
+                    navController.navigate(AppRoute.HOME) {
+                        popUpTo(AppRoute.HOME) {
+                            inclusive = true
+                        }
+                    }
+                }
+            )
+        }
 
 
     }
