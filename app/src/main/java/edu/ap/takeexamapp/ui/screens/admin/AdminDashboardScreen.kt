@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun AdminDashboardScreen(
+    onManageUsers: () -> Unit,
     onSignOut: () -> Unit
 ) {
     Column(
@@ -29,7 +30,7 @@ fun AdminDashboardScreen(
         )
 
         Button(
-            onClick = { },
+            onClick = onManageUsers,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 32.dp)
