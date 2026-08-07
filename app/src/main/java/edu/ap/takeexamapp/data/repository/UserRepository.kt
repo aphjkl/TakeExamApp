@@ -51,6 +51,35 @@ class UserRepository(
             .addOnFailureListener(onError)
     }
 
+    fun addUsers(
+        users: List<Pair<String, String>>,
+        onSuccess: () -> Unit,
+        onError: (Exception) -> Unit
+    ) {
+        if (users.isEmpty()) {
+            onSuccess()
+            return
+        }
+
+        val batch = firestore.batch()
+
+        users.forEach { (firstName, lastName) ->
+            val document = usersCollection.document()
+
+            batch.set(
+                document,
+                mapOf(
+                    "firstName" to firstName.trim(),
+                    "lastName" to lastName.trim()
+                )
+            )
+        }
+
+        batch.commit()
+            .addOnSuccessListener { onSuccess() }
+            .addOnFailureListener(onError)
+    }
+
     fun deleteUser(
         userId: String,
         onSuccess: () -> Unit,

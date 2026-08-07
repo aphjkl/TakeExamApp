@@ -43,6 +43,10 @@ fun ManageUsersScreen(
     var isLoading by remember { mutableStateOf(true) }
     var isSaving by remember { mutableStateOf(false) }
     var userToDelete by remember { mutableStateOf<ExamUser?>(null) }
+    var showBulkImport by remember { mutableStateOf(false) }
+    var bulkText by remember { mutableStateOf("") }
+    var bulkError by remember { mutableStateOf<String?>(null) }
+
 
     DisposableEffect(repository) {
         val registration = repository.observeUsers(
@@ -86,6 +90,19 @@ fun ManageUsersScreen(
                     ?: "Unable to add the user."
             }
         )
+    }
+
+    OutlinedButton(
+        onClick = {
+            bulkText = ""
+            bulkError = null
+            showBulkImport = true
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp)
+    ) {
+        Text("Import multiple users")
     }
 
     Column(
@@ -236,6 +253,97 @@ fun ManageUsersScreen(
             }
         )
     }
+    if (showBulkImport) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!isSaving) {
+                    showBulkImport = false
+                }
+            },
+            title = {
+                Text("Import multiple users")
+            },
+            text = {
+                Column {
+                    Text(
+                        "Enter one user per line. Put the first name first, " +
+                                "followed by the last name."
+                    )
+
+                    OutlinedTextField(
+                        value = bulkText,
+                        onValueChange = {
+                            bulkText = it
+                            bulkError = null
+                        },
+                        label = { Text("Users") },
+                        placeholder = {
+                            Text(
+                                "Jan Janssens\n" +
+                                        "Sara Peeters\n" +
+                                        "Mohamed El Amrani"
+                            )
+                        },
+                        minLines = 6,
+                        maxLines = 12,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp)
+                    )
+
+                    bulkError?.let {
+                        Text(
+                            text = it,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !isSaving,
+                    onClick = {
+                        val parsedUsers = parseBulkUsers(bulkText)
+
+                        if (parsedUsers.isEmpty()) {
+                            bulkError = "Enter at least one complete name."
+                            return@TextButton
+                        }
+
+                        isSaving = true
+                        bulkError = null
+
+                        repository.addUsers(
+                            users = parsedUsers,
+                            onSuccess = {
+                                isSaving = false
+                                showBulkImport = false
+                                bulkText = ""
+                            },
+                            onError = {
+                                isSaving = false
+                                bulkError = it.localizedMessage
+                                    ?: "Unable to import users."
+                            }
+                        )
+                    }
+                ) {
+                    Text(if (isSaving) "Importing…" else "Import")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    enabled = !isSaving,
+                    onClick = {
+                        showBulkImport = false
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -262,4 +370,25 @@ private fun UserListItem(
             Text("Delete")
         }
     }
+}
+private fun parseBulkUsers(text: String): List<Pair<String, String>> {
+    return text
+        .lineSequence()
+        .map { it.trim() }
+        .filter { it.isNotBlank() }
+        .mapNotNull { line ->
+            val parts = line
+                .split(Regex("\\s+"), limit = 2)
+                .map { it.trim() }
+
+            if (parts.size != 2 ||
+                parts[0].isBlank() ||
+                parts[1].isBlank()
+            ) {
+                null
+            } else {
+                parts[0] to parts[1]
+            }
+        }
+        .toList()
 }
