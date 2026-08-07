@@ -92,26 +92,29 @@ fun ManageUsersScreen(
         )
     }
 
-    OutlinedButton(
-        onClick = {
-            bulkText = ""
-            bulkError = null
-            showBulkImport = true
-        },
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 8.dp)
-    ) {
-        Text("Import multiple users")
-    }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(24.dp)
     ) {
-        OutlinedButton(onClick = onBack) {
-            Text("Back")
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedButton(onClick = onBack) {
+                Text("Back")
+            }
+
+            OutlinedButton(
+                onClick = {
+                    bulkText = ""
+                    bulkError = null
+                    showBulkImport = true
+                }
+            ) {
+                Text("Import multiple users")
+            }
         }
 
         Text(
@@ -281,7 +284,7 @@ fun ManageUsersScreen(
                             Text(
                                 "Jan Janssens\n" +
                                         "Sara Peeters\n" +
-                                        "Mohamed El Amrani"
+                                        "Mohamed Chen"
                             )
                         },
                         minLines = 6,
