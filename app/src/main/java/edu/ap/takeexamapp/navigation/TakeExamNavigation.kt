@@ -15,6 +15,8 @@ import com.google.firebase.auth.FirebaseAuth
 import edu.ap.takeexamapp.ui.screens.admin.AdminDashboardScreen
 import edu.ap.takeexamapp.ui.screens.admin.AdminLoginScreen
 import edu.ap.takeexamapp.ui.screens.admin.ManageUsersScreen
+import edu.ap.takeexamapp.ui.screens.admin.ManageExamsScreen
+import edu.ap.takeexamapp.ui.screens.admin.EditExamScreen
 
 @Composable
 fun TakeExamNavigation() {
@@ -57,11 +59,29 @@ fun TakeExamNavigation() {
                 }
             )
         }
+        composable(AppRoute.MANAGE_EXAMS) {
+            ManageExamsScreen(
+                onBack = { navController.popBackStack() },
+                onEditExam = { examId ->
+                    navController.navigate(AppRoute.editExam(examId))
+                }
+            )
+        }
+        composable(AppRoute.EDIT_EXAM) { backStackEntry ->
+            val examId = backStackEntry.arguments?.getString("examId") ?: return@composable
+            EditExamScreen(
+                examId = examId,
+                onBack = { navController.popBackStack() }
+            )
+        }
 
         composable(AppRoute.ADMIN_DASHBOARD) {
             AdminDashboardScreen(
                 onManageUsers = {
                     navController.navigate(AppRoute.MANAGE_USERS)
+                },
+                onManageExams = {
+                    navController.navigate(AppRoute.MANAGE_EXAMS)
                 },
                 onSignOut = {
                     FirebaseAuth.getInstance().signOut()
