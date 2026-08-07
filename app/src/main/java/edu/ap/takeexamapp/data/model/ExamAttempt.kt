@@ -20,7 +20,9 @@ data class ExamAttempt(
     val maximumPoints: Int = 0,
     val automaticPoints: Int = 0,
     val finalPoints: Int? = null,
-    val status: String = AttemptStatus.PENDING_REVIEW
+    val status: String = AttemptStatus.PENDING_REVIEW,
+    val reviewedAt: Long? = null,
+    val reviewedBy: String = ""
 )
 
 data class ExamAnswer(
@@ -31,7 +33,8 @@ data class ExamAnswer(
     val openAnswer: String = "",
     val selectedOptionIndex: Int = -1,
     val selectedOptionText: String = "",
-    val awardedPoints: Int? = null
+    val awardedPoints: Int? = null,
+    val position: Int = 0
 )
 
 data class DraftAnswer(

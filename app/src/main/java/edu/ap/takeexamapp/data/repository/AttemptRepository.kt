@@ -132,7 +132,8 @@ class AttemptRepository(
                 openAnswer = draftAnswer?.openAnswer.orEmpty(),
                 selectedOptionIndex = selectedIndex,
                 selectedOptionText = question.options.getOrNull(selectedIndex).orEmpty(),
-                awardedPoints = if (question.type == QuestionType.MULTIPLE_CHOICE) automaticPoints else null
+                awardedPoints = if (question.type == QuestionType.MULTIPLE_CHOICE) automaticPoints else null,
+                position = question.position
             )
         }
         val automaticPoints = answers.sumOf { it.awardedPoints ?: 0 }
