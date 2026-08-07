@@ -41,6 +41,10 @@ fun AdminLoginScreen(
         isLoading = true
         errorMessage = null
 
+        if (FirebaseAuth.getInstance().currentUser?.isAnonymous == true) {
+            FirebaseAuth.getInstance().signOut()
+        }
+
         FirebaseAuth.getInstance()
             .signInWithEmailAndPassword(email.trim(), password)
             .addOnSuccessListener {

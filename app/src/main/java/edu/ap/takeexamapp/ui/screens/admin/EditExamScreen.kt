@@ -62,13 +62,16 @@ fun EditExamScreen(examId: String, onBack: () -> Unit) {
             modifier = Modifier.padding(top = 16.dp))
 
         OutlinedTextField(title, { title = it }, label = { Text("Title") },
+            enabled = exam?.published != true,
             singleLine = true, modifier = Modifier.fillMaxWidth().padding(top = 16.dp))
         OutlinedTextField(description, { description = it }, label = { Text("Description") },
+            enabled = exam?.published != true,
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
         Button(onClick = {
             if (title.isBlank()) error = "Enter an exam title."
             else repository.updateExam(examId, title, description, {}, { error = it.localizedMessage })
-        }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) { Text("Save exam details") }
+        }, enabled = exam?.published != true,
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) { Text("Save exam details") }
 
         exam?.let {
             Row(verticalAlignment = Alignment.CenterVertically,
@@ -79,6 +82,10 @@ fun EditExamScreen(examId: String, onBack: () -> Unit) {
                     else repository.setPublished(examId, value, {}, { e -> error = e.localizedMessage })
                 })
             }
+            if (it.published) {
+                Text("Unpublish this exam before changing its details or questions.",
+                    style = MaterialTheme.typography.bodySmall)
+            }
         }
 
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
@@ -87,7 +94,8 @@ fun EditExamScreen(examId: String, onBack: () -> Unit) {
             modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
             Text("Questions (${questions.size}) · ${questions.sumOf { it.points }} points",
                 style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-            Button(onClick = { showQuestionDialog = true }) { Text("Add question") }
+            Button(enabled = exam?.published != true,
+                onClick = { showQuestionDialog = true }) { Text("Add question") }
         }
 
         LazyColumn(modifier = Modifier.weight(1f)) {
@@ -99,7 +107,8 @@ fun EditExamScreen(examId: String, onBack: () -> Unit) {
                         Text("${if (question.type == QuestionType.OPEN) "Open" else "Multiple choice"} · ${question.points} points",
                             style = MaterialTheme.typography.bodySmall)
                     }
-                    TextButton(onClick = { questionToDelete = question }) { Text("Delete") }
+                    TextButton(enabled = exam?.published != true,
+                        onClick = { questionToDelete = question }) { Text("Delete") }
                 }
                 HorizontalDivider()
             }
