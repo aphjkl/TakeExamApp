@@ -145,7 +145,6 @@ private fun AddQuestionDialog(position: Int, onDismiss: () -> Unit, onAdd: (Ques
     var text by remember { mutableStateOf("") }
     var type by remember { mutableStateOf(QuestionType.OPEN) }
     var pointsText by remember { mutableStateOf("1") }
-    var answersText by remember { mutableStateOf("") }
     var optionsText by remember { mutableStateOf("") }
     var correctIndex by remember { mutableStateOf(-1) }
     var validation by remember { mutableStateOf<String?>(null) }
@@ -168,11 +167,7 @@ private fun AddQuestionDialog(position: Int, onDismiss: () -> Unit, onAdd: (Ques
                         label = { Text("Points") }, singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
 
-                    if (type == QuestionType.OPEN) {
-                        OutlinedTextField(answersText, { answersText = it },
-                            label = { Text("Accepted answers (one per line)") }, minLines = 3,
-                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
-                    } else {
+                    if (type == QuestionType.MULTIPLE_CHOICE) {
                         OutlinedTextField(optionsText, { optionsText = it; correctIndex = -1 },
                             label = { Text("Options (one per line)") }, minLines = 4,
                             modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
@@ -190,17 +185,15 @@ private fun AddQuestionDialog(position: Int, onDismiss: () -> Unit, onAdd: (Ques
         },
         confirmButton = { TextButton(onClick = {
             val points = pointsText.toIntOrNull() ?: 0
-            val accepted = answersText.lines().map { it.trim() }.filter { it.isNotEmpty() }
             validation = when {
                 text.isBlank() -> "Enter the question."
                 points < 1 -> "Points must be at least 1."
-                type == QuestionType.OPEN && accepted.isEmpty() -> "Enter at least one accepted answer."
                 type == QuestionType.MULTIPLE_CHOICE && options.size < 2 -> "Enter at least two options."
                 type == QuestionType.MULTIPLE_CHOICE && correctIndex !in options.indices -> "Select the correct answer."
                 else -> null
             }
             if (validation == null) onAdd(Question(text = text.trim(), type = type, points = points,
-                acceptedAnswers = if (type == QuestionType.OPEN) accepted else emptyList(),
+                acceptedAnswers = emptyList(),
                 options = if (type == QuestionType.MULTIPLE_CHOICE) options else emptyList(),
                 correctOptionIndex = if (type == QuestionType.MULTIPLE_CHOICE) correctIndex else -1,
                 position = position))
