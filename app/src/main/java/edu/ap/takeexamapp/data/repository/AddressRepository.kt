@@ -9,7 +9,7 @@ import java.util.Locale
 import kotlin.concurrent.thread
 
 class AddressRepository(private val context: Context) {
-    private val cache = context.getSharedPreferences("geocoding_cache", Context.MODE_PRIVATE)
+    private val cache = context.getSharedPreferences("geocoding_cache_v2", Context.MODE_PRIVATE)
     private val firestore = FirebaseFirestore.getInstance()
 
     fun reverseGeocode(
@@ -54,8 +54,8 @@ class AddressRepository(private val context: Context) {
             if (connection.responseCode !in 200..299) {
                 throw IllegalStateException("Address service returned ${connection.responseCode}.")
             }
-            val address = JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
-                .optString("display_name").trim()
+            val response = JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
+            val address = formatShortAddress(response)
             if (address.isEmpty()) throw IllegalStateException("No address was found for this location.")
             cache.edit().putString(cacheKey, address).apply()
             android.os.Handler(context.mainLooper).post { onSuccess(address) }
@@ -72,3 +72,36 @@ class AddressRepository(private val context: Context) {
         const val DEFAULT_BASE_URL = "https://nominatim.openstreetmap.org"
     }
 }
+
+private fun formatShortAddress(response: JSONObject): String {
+    val components = response.optJSONObject("address")
+    if (components != null) {
+        val street = components.firstNonBlank(
+            "road", "pedestrian", "footway", "path", "cycleway",
+            "residential", "neighbourhood", "suburb"
+        )
+        val houseNumber = components.optString("house_number").trim()
+        val municipality = components.firstNonBlank(
+            "city", "town", "village", "municipality", "county"
+        )
+        val streetWithNumber = listOf(street, houseNumber)
+            .filter { it.isNotBlank() }
+            .joinToString(" ")
+        val parts = listOf(streetWithNumber, municipality)
+            .filter { it.isNotBlank() }
+            .distinctBy { it.lowercase(Locale.getDefault()) }
+        if (parts.isNotEmpty()) return parts.joinToString(", ")
+    }
+
+    return response.optString("display_name")
+        .split(',')
+        .firstOrNull { it.isNotBlank() }
+        ?.trim()
+        .orEmpty()
+}
+
+private fun JSONObject.firstNonBlank(vararg keys: String): String =
+    keys.asSequence()
+        .map { optString(it).trim() }
+        .firstOrNull { it.isNotBlank() }
+        .orEmpty()
