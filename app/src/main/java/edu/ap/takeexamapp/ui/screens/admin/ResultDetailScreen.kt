@@ -1,10 +1,16 @@
 package edu.ap.takeexamapp.ui.screens.admin
 
+import android.graphics.Color as AndroidColor
+import android.graphics.drawable.GradientDrawable
+import android.view.ViewOutlineProvider
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
@@ -19,6 +25,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -109,25 +117,46 @@ private fun ExamLocationMap(latitude: Double, longitude: Double, markerTitle: St
         }
     }
 
-    AndroidView(
-        factory = {
-            mapView.apply {
-                setTileSource(TileSourceFactory.MAPNIK)
-                setMultiTouchControls(true)
-                controller.setZoom(16.0)
-                controller.setCenter(point)
+    val mapShape = RoundedCornerShape(12.dp)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp)
+            .height(280.dp)
+            .graphicsLayer {
+                shape = mapShape
+                clip = true
             }
-        },
-        update = { map ->
-            map.overlays.clear()
-            map.overlays.add(Marker(map).apply {
-                position = point
-                title = markerTitle
-                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-            })
-            map.controller.setCenter(point)
-            map.invalidate()
-        },
-        modifier = Modifier.fillMaxWidth().height(280.dp).padding(top = 12.dp)
-    )
+            .clip(mapShape)
+            .border(1.dp, MaterialTheme.colorScheme.outline, mapShape)
+    ) {
+        AndroidView(
+            factory = {
+                mapView.apply {
+                    background = GradientDrawable().apply {
+                        shape = GradientDrawable.RECTANGLE
+                        setColor(AndroidColor.TRANSPARENT)
+                        cornerRadius = 12 * resources.displayMetrics.density
+                    }
+                    outlineProvider = ViewOutlineProvider.BACKGROUND
+                    clipToOutline = true
+                    setTileSource(TileSourceFactory.MAPNIK)
+                    setMultiTouchControls(true)
+                    controller.setZoom(16.0)
+                    controller.setCenter(point)
+                }
+            },
+            update = { map ->
+                map.overlays.clear()
+                map.overlays.add(Marker(map).apply {
+                    position = point
+                    title = markerTitle
+                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                })
+                map.controller.setCenter(point)
+                map.invalidate()
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+    }
 }
