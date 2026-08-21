@@ -1,0 +1,85 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function anonymousUser() {
+      return signedIn()
+        && request.auth.token.firebase.sign_in_provider == 'anonymous';
+    }
+
+    function adminDocument() {
+      return /databases/$(database)/documents/admins/$(request.auth.uid);
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && !anonymousUser()
+        && exists(adminDocument())
+        && get(adminDocument()).data.enabled == true;
+    }
+
+    function publishedExam(examId) {
+      let examPath = /databases/$(database)/documents/exams/$(examId);
+      return exists(examPath) && get(examPath).data.published == true;
+    }
+
+    function userExists(userId) {
+      return exists(/databases/$(database)/documents/users/$(userId));
+    }
+
+    match /admins/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow list, create, update, delete: if false;
+    }
+
+    match /appConfig/{documentId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /exams/{examId} {
+      allow read: if isAdmin()
+        || resource.data.published == true;
+      allow create, update, delete: if isAdmin();
+
+      match /questions/{questionId} {
+        allow read: if isAdmin()
+          || publishedExam(examId);
+        allow create, update, delete: if isAdmin();
+      }
+    }
+
+    match /attemptLocks/{attemptId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if isAdmin();
+    }
+
+    match /attempts/{attemptId} {
+      // The student receipt reloads exactly the newly created attempt by its
+      // unguessable Firestore ID. Listing all results remains admin-only.
+      allow get: if true;
+      allow list: if isAdmin();
+      allow create: if true;
+      allow update, delete: if isAdmin();
+
+      match /answers/{questionId} {
+        allow read, update, delete: if isAdmin();
+        allow create: if true;
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
