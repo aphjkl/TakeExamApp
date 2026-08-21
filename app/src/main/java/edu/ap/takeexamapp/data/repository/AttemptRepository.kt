@@ -1,5 +1,6 @@
 package edu.ap.takeexamapp.data.repository
 
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import edu.ap.takeexamapp.data.model.AttemptStatus
@@ -15,6 +16,7 @@ class AttemptRepository(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) {
     private val attempts = firestore.collection("attempts")
+    private val attemptLocks = firestore.collection("attemptLocks")
 
     fun loadExam(examId: String, onSuccess: (Exam?) -> Unit, onError: (Exception) -> Unit) {
         firestore.collection("exams").document(examId).get()
@@ -72,7 +74,7 @@ class AttemptRepository(
                 publish()
             }
 
-        val attemptsListener = attempts.whereEqualTo("examId", examId)
+        val attemptsListener = attemptLocks.whereEqualTo("examId", examId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     onError(error)
@@ -111,8 +113,52 @@ class AttemptRepository(
         onDuplicate: () -> Unit,
         onError: (Exception) -> Unit
     ) {
-        val attemptId = "${draft.examId}_${draft.userId}"
-        val attemptReference = attempts.document(attemptId)
+        ensureAnonymousSession(
+            onSuccess = {
+                submitAuthenticatedAttempt(draft, onSuccess, onDuplicate, onError)
+            },
+            onError = onError
+        )
+    }
+
+    private fun ensureAnonymousSession(
+        onSuccess: () -> Unit,
+        onError: (Exception) -> Unit
+    ) {
+        val auth = FirebaseAuth.getInstance()
+        val currentUser = auth.currentUser
+
+        if (currentUser?.isAnonymous == true) {
+            // Force-refresh the token so Firestore never submits with a stale or
+            // missing credential after a longer exam.
+            currentUser.getIdToken(true)
+                .addOnSuccessListener { onSuccess() }
+                .addOnFailureListener { error ->
+                    auth.signOut()
+                    auth.signInAnonymously()
+                        .addOnSuccessListener { onSuccess() }
+                        .addOnFailureListener(onError)
+                }
+            return
+        }
+
+        // Student submissions must never use a lingering administrator session.
+        auth.signOut()
+        auth.signInAnonymously()
+            .addOnSuccessListener { onSuccess() }
+            .addOnFailureListener(onError)
+    }
+
+    private fun submitAuthenticatedAttempt(
+        draft: ExamDraft,
+        onSuccess: (ExamAttempt) -> Unit,
+        onDuplicate: () -> Unit,
+        onError: (Exception) -> Unit
+    ) {
+        val lockId = "${draft.examId}_${draft.userId}"
+        val attemptReference = attempts.document()
+        val attemptId = attemptReference.id
+        val lockReference = attemptLocks.document(lockId)
         val submittedAt = System.currentTimeMillis()
         val duration = ((submittedAt - draft.startedAt) / 1000L).coerceAtLeast(0L)
 
@@ -155,20 +201,31 @@ class AttemptRepository(
             status = AttemptStatus.PENDING_REVIEW
         )
 
-        firestore.runTransaction { transaction ->
-            if (transaction.get(attemptReference).exists()) {
-                throw DuplicateAttemptException()
+        lockReference.get()
+            .addOnSuccessListener { existingLock ->
+                if (existingLock.exists()) {
+                    onDuplicate()
+                    return@addOnSuccessListener
+                }
+
+                val batch = firestore.batch()
+                batch.set(lockReference, mapOf(
+                "examId" to draft.examId,
+                "userId" to draft.userId,
+                "attemptId" to attemptId,
+                "createdAt" to submittedAt
+                ))
+                batch.set(attemptReference, attempt)
+                answers.forEach { answer ->
+                    batch.set(
+                        attemptReference.collection("answers").document(answer.questionId),
+                        answer
+                    )
+                }
+                batch.commit()
+                    .addOnSuccessListener { onSuccess(attempt) }
+                    .addOnFailureListener(onError)
             }
-            transaction.set(attemptReference, attempt)
-            answers.forEach { answer ->
-                transaction.set(attemptReference.collection("answers").document(answer.questionId), answer)
-            }
-        }.addOnSuccessListener { onSuccess(attempt) }
-            .addOnFailureListener { error ->
-                if (error is DuplicateAttemptException || error.cause is DuplicateAttemptException) onDuplicate()
-                else onError(error as? Exception ?: Exception(error))
-            }
+            .addOnFailureListener(onError)
     }
 }
-
-private class DuplicateAttemptException : Exception("An attempt already exists for this student and exam.")

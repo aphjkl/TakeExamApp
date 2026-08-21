@@ -23,6 +23,16 @@ TakeExamApp is an Android application for creating and taking exams while record
 - View results by student and by exam
 - View the exam location on an OpenStreetMap map
 
+## Firebase administrator setup
+
+Create an Email/Password user in Firebase Authentication. Copy that user's UID and create this Firestore document before publishing the included security rules:
+
+```text
+admins/{uid}
+    enabled: true
+```
+
+The security rules are stored in `firestore.rules`.
 
 
 ## Demo

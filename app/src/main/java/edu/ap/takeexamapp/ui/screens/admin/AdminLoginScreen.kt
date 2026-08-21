@@ -22,6 +22,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 
 @Composable
 fun AdminLoginScreen(
@@ -31,6 +33,52 @@ fun AdminLoginScreen(
     var password by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
+
+    fun migrateExistingAttemptLocks(onComplete: () -> Unit, onError: (Exception) -> Unit) {
+        val firestore = FirebaseFirestore.getInstance()
+        firestore.collection("attempts").get()
+            .addOnSuccessListener { snapshot ->
+                val attemptsToMigrate = snapshot.documents.mapNotNull { document ->
+                    val examId = document.getString("examId").orEmpty()
+                    val userId = document.getString("userId").orEmpty()
+                    if (examId.isBlank() || userId.isBlank()) null
+                    else Triple("${examId}_${userId}", examId, userId) to
+                        (document.getLong("submittedAt") ?: System.currentTimeMillis())
+                }
+
+                if (attemptsToMigrate.isEmpty()) {
+                    onComplete()
+                    return@addOnSuccessListener
+                }
+
+                // A batch supports at most 500 writes. This school app is expected to stay
+                // well below that limit, but chunking keeps the migration safe as data grows.
+                val chunks = attemptsToMigrate.chunked(450)
+                var completedChunks = 0
+                chunks.forEach { chunk ->
+                    val batch = firestore.batch()
+                    chunk.forEach { (attemptData, createdAt) ->
+                        val (attemptId, examId, userId) = attemptData
+                        batch.set(
+                            firestore.collection("attemptLocks").document(attemptId),
+                            mapOf(
+                                "examId" to examId,
+                                "userId" to userId,
+                                "createdAt" to createdAt
+                            ),
+                            SetOptions.merge()
+                        )
+                    }
+                    batch.commit()
+                        .addOnSuccessListener {
+                            completedChunks++
+                            if (completedChunks == chunks.size) onComplete()
+                        }
+                        .addOnFailureListener(onError)
+                }
+            }
+            .addOnFailureListener(onError)
+    }
 
     fun login() {
         if (email.isBlank() || password.isBlank()) {
@@ -47,9 +95,44 @@ fun AdminLoginScreen(
 
         FirebaseAuth.getInstance()
             .signInWithEmailAndPassword(email.trim(), password)
-            .addOnSuccessListener {
-                isLoading = false
-                onLoginSuccess()
+            .addOnSuccessListener { result ->
+                val uid = result.user?.uid
+                if (uid == null) {
+                    FirebaseAuth.getInstance().signOut()
+                    isLoading = false
+                    errorMessage = "Unable to verify administrator access."
+                    return@addOnSuccessListener
+                }
+
+                FirebaseFirestore.getInstance()
+                    .collection("admins")
+                    .document(uid)
+                    .get()
+                    .addOnSuccessListener { document ->
+                        if (document.getBoolean("enabled") == true) {
+                            migrateExistingAttemptLocks(
+                                onComplete = {
+                                    isLoading = false
+                                    onLoginSuccess()
+                                },
+                                onError = { error ->
+                                    isLoading = false
+                                    errorMessage = error.localizedMessage
+                                        ?: "Unable to prepare existing exam attempts."
+                                }
+                            )
+                        } else {
+                            FirebaseAuth.getInstance().signOut()
+                            isLoading = false
+                            errorMessage = "This account does not have administrator access."
+                        }
+                    }
+                    .addOnFailureListener { error ->
+                        FirebaseAuth.getInstance().signOut()
+                        isLoading = false
+                        errorMessage = error.localizedMessage
+                            ?: "Unable to verify administrator access."
+                    }
             }
             .addOnFailureListener { error ->
                 isLoading = false

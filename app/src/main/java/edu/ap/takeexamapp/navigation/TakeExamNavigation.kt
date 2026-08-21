@@ -1,7 +1,16 @@
 package edu.ap.takeexamapp.navigation
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -9,6 +18,7 @@ import androidx.navigation.compose.rememberNavController
 import edu.ap.takeexamapp.ui.screens.home.HomeScreen
 
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import edu.ap.takeexamapp.ui.screens.admin.AdminDashboardScreen
 import edu.ap.takeexamapp.ui.screens.admin.AdminLoginScreen
 import edu.ap.takeexamapp.ui.screens.admin.ManageUsersScreen
@@ -241,7 +251,29 @@ private fun AdminRoute(navController: NavHostController, content: @Composable ()
                 popUpTo(AppRoute.HOME)
             }
         }
-    } else {
-        content()
+        return
+    }
+
+    var isAdmin by remember(user.uid) { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(user.uid) {
+        FirebaseFirestore.getInstance()
+            .collection("admins")
+            .document(user.uid)
+            .get()
+            .addOnSuccessListener { isAdmin = it.getBoolean("enabled") == true }
+            .addOnFailureListener { isAdmin = false }
+    }
+
+    when (isAdmin) {
+        null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        true -> content()
+        false -> LaunchedEffect(Unit) {
+            FirebaseAuth.getInstance().signOut()
+            navController.navigate(AppRoute.ADMIN_LOGIN) {
+                popUpTo(AppRoute.HOME)
+            }
+        }
     }
 }
