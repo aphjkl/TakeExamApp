@@ -32,7 +32,5 @@ admins/{uid}
     enabled: true
 ```
 
-The security rules are stored in `firestore.rules`.
-
 
 ## Demo
