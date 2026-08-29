@@ -34,3 +34,7 @@ admins/{uid}
 
 
 ## Demo
+
+[Watch-the-TakeExam-demo-video](demo/2026-08-29 22-43-19.mkv)
+
+The video demonstrates administrator login, user and exam management, taking and grading an exam, location capture, OpenStreetMap and the data stored in Firestore.
