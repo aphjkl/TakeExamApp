@@ -261,13 +261,28 @@ private fun ResultListLayout(
     title: String, onBack: () -> Unit, loading: Boolean, error: String?, attempts: List<ExamAttempt>,
     emptyText: String, row: @Composable (ExamAttempt) -> Unit
 ) {
+    var searchQuery by remember { mutableStateOf("") }
+    val filteredAttempts = attempts.filter {
+        val query = searchQuery.trim()
+        it.userName.contains(query, ignoreCase = true) ||
+            it.examTitle.contains(query, ignoreCase = true) ||
+            it.address.contains(query, ignoreCase = true)
+    }
     Column(Modifier.fillMaxSize().padding(24.dp)) {
         OutlinedButton(onClick = onBack) { Text("Back") }
         Text(title, style = MaterialTheme.typography.headlineLarge, modifier = Modifier.padding(top = 16.dp, bottom = 12.dp))
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            label = { Text("Search results") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+        )
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         if (loading) CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
         else if (attempts.isEmpty()) Text(emptyText)
-        else LazyColumn { items(attempts, key = { it.id }) { row(it); HorizontalDivider() } }
+        else if (filteredAttempts.isEmpty()) Text("No results match your search.")
+        else LazyColumn { items(filteredAttempts, key = { it.id }) { row(it); HorizontalDivider() } }
     }
 }
 
@@ -276,13 +291,23 @@ private fun <T> SelectorLayout(
     title: String, onBack: () -> Unit, loading: Boolean, error: String?, values: List<T>, emptyText: String,
     label: (T) -> String, id: (T) -> String, onSelect: (String) -> Unit
 ) {
+    var searchQuery by remember { mutableStateOf("") }
+    val filteredValues = values.filter { label(it).contains(searchQuery.trim(), ignoreCase = true) }
     Column(Modifier.fillMaxSize().padding(24.dp)) {
         OutlinedButton(onClick = onBack) { Text("Back") }
         Text(title, style = MaterialTheme.typography.headlineLarge, modifier = Modifier.padding(top = 16.dp, bottom = 12.dp))
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            label = { Text("Search") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+        )
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         if (loading) CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
         else if (values.isEmpty()) Text(emptyText)
-        else LazyColumn { items(values, key = id) { value ->
+        else if (filteredValues.isEmpty()) Text("No items match your search.")
+        else LazyColumn { items(filteredValues, key = id) { value ->
             Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(label(value), Modifier.weight(1f))
                 Button(onClick = { onSelect(id(value)) }) { Text("View") }

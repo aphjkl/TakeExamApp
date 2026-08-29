@@ -62,6 +62,8 @@ fun StudentExamListScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var draft by remember { mutableStateOf(draftStore.load()) }
     var authReady by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+    val filteredExams = exams.filter { it.title.contains(searchQuery.trim(), ignoreCase = true) }
 
     LaunchedEffect(Unit) {
         FirebaseAuth.getInstance().signOut()
@@ -85,12 +87,20 @@ fun StudentExamListScreen(
         OutlinedButton(onClick = onBack) { Text("Back") }
         Text("Choose an exam", style = MaterialTheme.typography.headlineLarge,
             modifier = Modifier.padding(top = 20.dp, bottom = 16.dp))
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            label = { Text("Search exams") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+        )
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         when {
             loading -> CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
             exams.isEmpty() -> Text("No published exams are available.")
+            filteredExams.isEmpty() -> Text("No exams match your search.")
             else -> LazyColumn {
-                items(exams, key = { it.id }) { exam ->
+                items(filteredExams, key = { it.id }) { exam ->
                     Row(Modifier.fillMaxWidth().padding(vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
@@ -125,6 +135,8 @@ fun StudentSelectionScreen(examId: String, onBack: () -> Unit, onSelectUser: (St
     var exam by remember { mutableStateOf<Exam?>(null) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
+    val filteredUsers = users.filter { it.fullName.contains(searchQuery.trim(), ignoreCase = true) }
 
     LaunchedEffect(examId) { repository.loadExam(examId, { exam = it }, { error = it.localizedMessage }) }
     DisposableEffect(examId) {
@@ -138,11 +150,19 @@ fun StudentSelectionScreen(examId: String, onBack: () -> Unit, onSelectUser: (St
         Text(exam?.title ?: "Choose a student", style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier.padding(top = 20.dp))
         Text("Tap your own name to continue.", modifier = Modifier.padding(vertical = 12.dp))
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            label = { Text("Search students") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+        )
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         if (loading) CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
         else if (users.isEmpty()) Text("No eligible students are available.")
+        else if (filteredUsers.isEmpty()) Text("No students match your search.")
         else LazyColumn {
-            items(users, key = { it.id }) { user ->
+            items(filteredUsers, key = { it.id }) { user ->
                 Row(Modifier.fillMaxWidth().padding(vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically) {
                     Text(user.fullName, Modifier.weight(1f))

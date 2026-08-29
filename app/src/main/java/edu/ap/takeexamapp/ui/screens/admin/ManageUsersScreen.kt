@@ -46,6 +46,8 @@ fun ManageUsersScreen(
     var showBulkImport by remember { mutableStateOf(false) }
     var bulkText by remember { mutableStateOf("") }
     var bulkError by remember { mutableStateOf<String?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
+    val filteredUsers = users.filter { it.fullName.contains(searchQuery.trim(), ignoreCase = true) }
 
 
     DisposableEffect(repository) {
@@ -179,6 +181,14 @@ fun ManageUsersScreen(
             modifier = Modifier.padding(top = 24.dp, bottom = 8.dp)
         )
 
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            label = { Text("Search users") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+        )
+
         when {
             isLoading -> {
                 CircularProgressIndicator(
@@ -193,12 +203,16 @@ fun ManageUsersScreen(
                 )
             }
 
+            filteredUsers.isEmpty() -> {
+                Text("No users match your search.", modifier = Modifier.padding(top = 16.dp))
+            }
+
             else -> {
                 LazyColumn(
                     modifier = Modifier.weight(1f)
                 ) {
                     items(
-                        items = users,
+                        items = filteredUsers,
                         key = { it.id }
                     ) { user ->
                         UserListItem(

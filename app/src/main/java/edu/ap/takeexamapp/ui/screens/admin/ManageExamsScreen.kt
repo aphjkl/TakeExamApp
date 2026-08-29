@@ -43,6 +43,11 @@ fun ManageExamsScreen(
     var description by remember { mutableStateOf("") }
     var saving by remember { mutableStateOf(false) }
     var examToDelete by remember { mutableStateOf<Exam?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
+    val filteredExams = exams.filter {
+        it.title.contains(searchQuery.trim(), ignoreCase = true) ||
+            it.description.contains(searchQuery.trim(), ignoreCase = true)
+    }
 
     DisposableEffect(repository) {
         val registration = repository.observeExams(
@@ -67,13 +72,22 @@ fun ManageExamsScreen(
         Text("Manage exams", style = MaterialTheme.typography.headlineLarge,
             modifier = Modifier.padding(top = 20.dp, bottom = 12.dp))
 
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            label = { Text("Search exams") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+        )
+
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
 
         when {
             loading -> CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
             exams.isEmpty() -> Text("No exams have been created yet.")
+            filteredExams.isEmpty() -> Text("No exams match your search.")
             else -> LazyColumn(modifier = Modifier.weight(1f)) {
-                items(exams, key = { it.id }) { exam ->
+                items(filteredExams, key = { it.id }) { exam ->
                     Column(Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
